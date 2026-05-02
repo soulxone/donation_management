@@ -1,0 +1,27 @@
+{
+ "actions": [],
+ "creation": "2026-05-02 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "istable": 1,
+ "field_order": [
+  "donation",
+  "donation_date",
+  "donation_fund",
+  "amount"
+ ],
+ "fields": [
+  {"fieldname": "donation", "fieldtype": "Link", "options": "Donation", "label": "Donation", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "donation_date", "fieldtype": "Date", "label": "Date", "fetch_from": "donation.donation_date", "in_list_view": 1},
+  {"fieldname": "donation_fund", "fieldtype": "Link", "options": "Donation Fund", "label": "Fund", "fetch_from": "donation.donation_fund", "in_list_view": 1},
+  {"fieldname": "amount", "fieldtype": "Currency", "label": "Amount", "fetch_from": "donation.amount", "in_list_view": 1}
+ ],
+ "modified": "2026-05-02 00:00:00",
+ "modified_by": "Administrator",
+ "module": "Donation Management",
+ "name": "Donation Receipt Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

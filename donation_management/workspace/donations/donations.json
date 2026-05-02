@@ -1,0 +1,42 @@
+{
+ "charts": [],
+ "content": "[{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Donations</span>\",\"col\":12}},{\"type\":\"card\",\"data\":{\"card_name\":\"Records\",\"col\":4}},{\"type\":\"card\",\"data\":{\"card_name\":\"Donors\",\"col\":4}},{\"type\":\"card\",\"data\":{\"card_name\":\"Configuration\",\"col\":4}}]",
+ "creation": "2026-05-02 00:00:00",
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "heart",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Donations",
+ "links": [
+  {"hidden": 0, "is_query_report": 0, "label": "Records", "link_count": 0, "onboard": 0, "type": "Card Break"},
+  {"dependencies": "", "hidden": 0, "is_query_report": 0, "label": "Donation", "link_count": 0, "link_to": "Donation", "link_type": "DocType", "onboard": 1, "type": "Link"},
+  {"dependencies": "", "hidden": 0, "is_query_report": 0, "label": "Recurring Donation", "link_count": 0, "link_to": "Recurring Donation", "link_type": "DocType", "onboard": 0, "type": "Link"},
+  {"dependencies": "", "hidden": 0, "is_query_report": 0, "label": "Donation Receipt", "link_count": 0, "link_to": "Donation Receipt", "link_type": "DocType", "onboard": 0, "type": "Link"},
+  {"hidden": 0, "is_query_report": 0, "label": "Donors", "link_count": 0, "onboard": 0, "type": "Card Break"},
+  {"dependencies": "", "hidden": 0, "is_query_report": 0, "label": "Donor", "link_count": 0, "link_to": "Donor", "link_type": "DocType", "onboard": 1, "type": "Link"},
+  {"hidden": 0, "is_query_report": 0, "label": "Configuration", "link_count": 0, "onboard": 0, "type": "Card Break"},
+  {"dependencies": "", "hidden": 0, "is_query_report": 0, "label": "Donation Fund", "link_count": 0, "link_to": "Donation Fund", "link_type": "DocType", "onboard": 0, "type": "Link"},
+  {"dependencies": "", "hidden": 0, "is_query_report": 0, "label": "Payment Channel", "link_count": 0, "link_to": "Payment Channel", "link_type": "DocType", "onboard": 0, "type": "Link"},
+  {"dependencies": "", "hidden": 0, "is_query_report": 0, "label": "Donation Settings", "link_count": 0, "link_to": "Donation Settings", "link_type": "DocType", "onboard": 0, "type": "Link"},
+  {"dependencies": "", "hidden": 0, "is_query_report": 0, "label": "Donation Payment Log", "link_count": 0, "link_to": "Donation Payment Log", "link_type": "DocType", "onboard": 0, "type": "Link"}
+ ],
+ "modified": "2026-05-02 00:00:00",
+ "modified_by": "Administrator",
+ "module": "Donation Management",
+ "name": "Donations",
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "restrict_to_domain": "",
+ "roles": [],
+ "sequence_id": 0.0,
+ "shortcuts": [
+  {"color": "Green", "format": "{} Pending", "label": "Pending Donations", "link_to": "Donation", "stats_filter": "{\"status\":\"Pending\"}", "type": "DocType"},
+  {"color": "Blue", "label": "This Year", "link_to": "Donation", "type": "DocType"}
+ ],
+ "title": "Donations"
+}

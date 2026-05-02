@@ -1,0 +1,14 @@
+/* Public-facing styles for /donate, /donate/thanks, /my-giving */
+.donate-page { max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+.donate-amount-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; margin:1rem 0; }
+.donate-amount-grid button { padding:.75rem; border:1px solid #4ABFAB; background:#fff; color:#4ABFAB; border-radius:.5rem; cursor:pointer; font-weight:600; }
+.donate-amount-grid button.active { background:#4ABFAB; color:#fff; }
+.donate-channels { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:.75rem; margin:1.25rem 0; }
+.donate-channel-card { padding:1rem; border:1px solid #e0e0e0; border-radius:.5rem; cursor:pointer; text-align:center; }
+.donate-channel-card.active { border-color:#4ABFAB; background:#EBF6FA; }
+.donate-channel-card .icon { font-size:1.75rem; }
+.fund-card { border:1px solid #e0e0e0; border-radius:.5rem; padding:1rem; margin-bottom:.75rem; cursor:pointer; }
+.fund-card.active { border-color:#4ABFAB; background:#EBF6FA; }
+.donate-cta { background:linear-gradient(135deg,#3a9e8a,#4ABFAB,#6BB8D4); color:#fff; border:0; padding:1rem 2rem; border-radius:.5rem; font-size:1.1rem; font-weight:700; cursor:pointer; width:100%; }
+.donate-cta:disabled { opacity:.5; cursor:not-allowed; }
+.text-mint { color:#4ABFAB; }

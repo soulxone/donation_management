@@ -1,0 +1,5 @@
+/* Desk styling for Donation Management */
+.donation-amount-positive { color: #4ABFAB; font-weight: 600; }
+.donation-status-succeeded { color: #4ABFAB; }
+.donation-status-failed { color: #d9534f; }
+.donation-status-pending { color: #f0ad4e; }

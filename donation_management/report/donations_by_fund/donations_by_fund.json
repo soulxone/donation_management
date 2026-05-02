@@ -1,0 +1,24 @@
+{
+ "add_total_row": 1,
+ "creation": "2026-05-02 00:00:00",
+ "disable_prepared_report": 0,
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "is_standard": "Yes",
+ "letter_head": "",
+ "modified": "2026-05-02 00:00:00",
+ "modified_by": "Administrator",
+ "module": "Donation Management",
+ "name": "Donations by Fund",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "ref_doctype": "Donation",
+ "report_name": "Donations by Fund",
+ "report_type": "Script Report",
+ "roles": [
+  {"role": "Donations Manager"},
+  {"role": "Donations User"},
+  {"role": "Accounts Manager"}
+ ]
+}

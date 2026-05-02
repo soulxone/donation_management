@@ -1,0 +1,15 @@
+{% extends "templates/web.html" %}
+{% block title %}Thank You — Pleasant Springs Church{% endblock %}
+{% block page_content %}
+<div style="max-width:640px;margin:3rem auto;text-align:center;padding:0 1rem">
+  <div style="font-size:4rem">💚</div>
+  <h1 style="color:#3a9e8a">Thank You!</h1>
+  {% set settings = frappe.get_single("Donation Settings") %}
+  <div style="color:#444;font-size:1.1rem;line-height:1.6">{{ settings.thank_you_message or "" }}</div>
+  {% set ref = frappe.form_dict.get('ref') %}
+  {% if ref %}
+    <p style="margin-top:1.5rem;color:#666">Reference: <code>{{ ref }}</code></p>
+  {% endif %}
+  <p style="margin-top:2rem"><a href="/" style="color:#4ABFAB;font-weight:600">← Back to home</a></p>
+</div>
+{% endblock %}

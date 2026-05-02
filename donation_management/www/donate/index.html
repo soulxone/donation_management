@@ -1,0 +1,97 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Give to Pleasant Springs Church{% endblock %}
+
+{% block head_include %}
+<meta name="description" content="Make a tax-deductible gift to Pleasant Springs Church. Choose your fund, your amount, and your preferred way to give — card, bank, PayPal, Venmo, Cash App, Apple Pay, Google Pay, Zelle, or check.">
+<meta property="og:title" content="Give to Pleasant Springs Church">
+<meta property="og:description" content="Support the mission of Pleasant Springs Church with a one-time or recurring gift.">
+<meta property="og:url" content="https://ps-church.com/donate">
+<style>
+  .hero-give { background: linear-gradient(135deg, #3a9e8a, #4ABFAB, #6BB8D4); color:#fff; padding:2.5rem 1rem; text-align:center; margin-bottom:1.5rem; border-radius:0 0 1rem 1rem; }
+  .hero-give h1 { color:#fff; margin:0 0 .5rem; font-size:2rem; }
+  .hero-give p { color:#fff; opacity:.92; margin:0; }
+  .donate-card { background:#fff; border:1px solid #e7e9ec; border-radius:.75rem; padding:1.5rem; margin-bottom:1rem; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  .donate-card h3 { margin-top:0; color:#3a9e8a; font-size:1.1rem; text-transform:uppercase; letter-spacing:.05em; }
+  .field-grid { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+  .field-grid > * { width:100%; }
+  @media (max-width:600px){ .field-grid{ grid-template-columns:1fr; } }
+  input[type=text], input[type=email], input[type=tel], input[type=number], select, textarea { width:100%; padding:.6rem; border:1px solid #ccc; border-radius:.4rem; font-size:1rem; }
+  label { font-weight:600; font-size:.9rem; display:block; margin-bottom:.25rem; color:#444; }
+  .freq-toggle { display:inline-flex; border:1px solid #4ABFAB; border-radius:.4rem; overflow:hidden; }
+  .freq-toggle button { padding:.5rem 1rem; background:#fff; color:#4ABFAB; border:0; cursor:pointer; font-weight:600; }
+  .freq-toggle button.active { background:#4ABFAB; color:#fff; }
+  .donate-summary { background:#EBF6FA; padding:1rem; border-radius:.5rem; margin-bottom:1rem; }
+  .donate-summary .total { font-size:1.5rem; font-weight:700; color:#3a9e8a; }
+  .errmsg { color:#d9534f; margin:.5rem 0; }
+  .next-step { background:#f0fff8; border:2px solid #4ABFAB; padding:1.5rem; border-radius:.5rem; margin-top:1rem; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="hero-give">
+  <h1>Give to Pleasant Springs Church</h1>
+  <p>Your generosity sustains our ministry, missions, and community.</p>
+</div>
+
+<div class="donate-page" id="donate-app">
+  <div class="donate-card">
+    <h3>1. Choose a Fund</h3>
+    <div id="fund-list">Loading…</div>
+  </div>
+
+  <div class="donate-card">
+    <h3>2. Amount &amp; Frequency</h3>
+    <div class="freq-toggle" id="freq-toggle">
+      <button data-freq="Once" class="active">One time</button>
+      <button data-freq="Monthly">Monthly</button>
+      <button data-freq="Weekly">Weekly</button>
+    </div>
+    <div class="donate-amount-grid" id="amount-grid"></div>
+    <label for="custom-amount">Or enter a custom amount</label>
+    <input type="number" id="custom-amount" min="1" step="0.01" placeholder="Custom amount">
+  </div>
+
+  <div class="donate-card">
+    <h3>3. Your Information</h3>
+    <label><input type="checkbox" id="anon-toggle"> Make this gift anonymous</label>
+    <div id="donor-fields">
+      <div class="field-grid">
+        <div><label>Full name *</label><input type="text" id="donor-name"></div>
+        <div><label>Email *</label><input type="email" id="donor-email"></div>
+      </div>
+      <div class="field-grid">
+        <div><label>Phone</label><input type="tel" id="donor-phone"></div>
+        <div><label>Country</label><input type="text" id="donor-country" value="United States"></div>
+      </div>
+      <label>Street address</label>
+      <input type="text" id="donor-addr1" placeholder="Address line 1">
+      <input type="text" id="donor-addr2" placeholder="Apt, suite, etc.">
+      <div class="field-grid">
+        <div><label>City</label><input type="text" id="donor-city"></div>
+        <div><label>State</label><input type="text" id="donor-state"></div>
+      </div>
+      <label>Postal code</label>
+      <input type="text" id="donor-zip">
+    </div>
+    <label style="margin-top:1rem">Memo (optional)</label>
+    <textarea id="donor-memo" rows="2" placeholder="In honor of, prayer request, etc."></textarea>
+  </div>
+
+  <div class="donate-card">
+    <h3>4. How would you like to give?</h3>
+    <div class="donate-channels" id="channel-list">Loading…</div>
+  </div>
+
+  <div class="donate-summary" id="donate-summary" style="display:none">
+    <div>You're giving <span class="total" id="summary-total">$0</span> <span id="summary-freq"></span> to <span id="summary-fund"></span> via <span id="summary-channel"></span></div>
+  </div>
+
+  <div class="errmsg" id="error-msg"></div>
+  <button class="donate-cta" id="donate-cta" disabled>Continue</button>
+
+  <div class="next-step" id="next-step" style="display:none"></div>
+</div>
+
+<script src="/assets/donation_management/js/donate_page.js"></script>
+{% endblock %}

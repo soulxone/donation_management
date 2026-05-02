@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# Frappe / build artifacts
+*.log
+sites/
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ---- Sensitive data — DO NOT COMMIT ----
+# No bank account numbers, routing numbers, or full card numbers belong in this repo.
+# All payment provider keys live in the encrypted `Donation Settings` doctype on the
+# server (Frappe Password fields), never in source control.
+.env
+.env.*
+*.creds
+*.bank-info
+*.bank.txt
+account-numbers.*
+secrets.*
+secrets/
+fixtures/donations_*.json
+fixtures/donors_*.json
+*test-data*
+*-real-data.*
+real-donor-data.*
+psc-bank-*
+pscem-bank-*

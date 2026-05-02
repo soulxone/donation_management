@@ -1,0 +1,47 @@
+{% extends "templates/web.html" %}
+{% block title %}My Giving — Pleasant Springs Church{% endblock %}
+{% block page_content %}
+{% set user = frappe.session.user %}
+{% if user == "Guest" %}
+  <div style="max-width:520px;margin:3rem auto;text-align:center;padding:0 1rem">
+    <h1>Sign in to view your giving</h1>
+    <p>You'll be able to see your donation history and download tax receipts.</p>
+    <p><a href="/login?redirect-to=/my-giving" style="background:#4ABFAB;color:#fff;padding:.75rem 1.5rem;border-radius:.4rem;text-decoration:none">Sign in</a></p>
+  </div>
+{% else %}
+  {% set donor = frappe.db.get_value("Donor", {"linked_user": user}, "name") %}
+  <div style="max-width:920px;margin:2rem auto;padding:0 1rem">
+    <h1 style="color:#3a9e8a">My Giving</h1>
+    {% if not donor %}
+      <p style="color:#666">No donor record is linked to your account yet. If you've recently given, please contact the church office.</p>
+    {% else %}
+      {% set d = frappe.get_doc("Donor", donor) %}
+      <div style="background:#EBF6FA;padding:1rem;border-radius:.5rem;margin-bottom:1.5rem">
+        <div><b>Lifetime giving:</b> ${{ "{:,.2f}".format(d.lifetime_total or 0) }} across {{ d.donations_count or 0 }} gifts</div>
+        {% if d.last_donation_date %}<div>Last gift: {{ frappe.format(d.last_donation_date, {"fieldtype":"Date"}) }}</div>{% endif %}
+      </div>
+      {% set donations = frappe.get_all("Donation", filters={"donor": donor, "docstatus": 1},
+            fields=["name","donation_date","amount","donation_fund","payment_channel","status","donation_receipt"],
+            order_by="donation_date desc", limit_page_length=200) %}
+      {% if donations %}
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="border-bottom:2px solid #4ABFAB"><th style="text-align:left;padding:.5rem">Date</th><th style="text-align:left;padding:.5rem">Fund</th><th style="text-align:right;padding:.5rem">Amount</th><th style="text-align:left;padding:.5rem">Method</th><th style="text-align:left;padding:.5rem">Receipt</th></tr></thead>
+        <tbody>
+        {% for g in donations %}
+        <tr style="border-bottom:1px solid #eee">
+          <td style="padding:.5rem">{{ frappe.format(g.donation_date,{"fieldtype":"Date"}) }}</td>
+          <td style="padding:.5rem">{{ g.donation_fund }}</td>
+          <td style="padding:.5rem;text-align:right;font-weight:600">${{ "{:,.2f}".format(g.amount) }}</td>
+          <td style="padding:.5rem;color:#666">{{ g.payment_channel }}</td>
+          <td style="padding:.5rem">{% if g.donation_receipt %}<a href="/api/method/frappe.utils.print_format.download_pdf?doctype=Donation%20Receipt&name={{ g.donation_receipt }}&format=Donation%20Receipt" target="_blank">PDF</a>{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        <p style="color:#666">No donations on file yet.</p>
+      {% endif %}
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

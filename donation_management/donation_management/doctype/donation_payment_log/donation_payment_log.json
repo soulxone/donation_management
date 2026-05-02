@@ -1,0 +1,48 @@
+{
+ "actions": [],
+ "creation": "2026-05-02 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "autoname": "format:LOG-{YYYY}{MM}{DD}-{#####}",
+ "field_order": [
+  "received_at",
+  "provider",
+  "event_type",
+  "column_break_4",
+  "external_event_id",
+  "external_object_id",
+  "donation",
+  "section_payload",
+  "verified",
+  "processing_status",
+  "error_message",
+  "raw_payload"
+ ],
+ "fields": [
+  {"fieldname": "received_at", "fieldtype": "Datetime", "label": "Received At", "default": "Now", "in_list_view": 1, "in_standard_filter": 1},
+  {"fieldname": "provider", "fieldtype": "Select", "options": "Stripe\nPayPal\nBraintree\nSquare\nPlaid\nTwilio", "label": "Provider", "in_list_view": 1, "in_standard_filter": 1},
+  {"fieldname": "event_type", "fieldtype": "Data", "label": "Event Type", "in_list_view": 1, "in_standard_filter": 1},
+  {"fieldname": "column_break_4", "fieldtype": "Column Break"},
+  {"fieldname": "external_event_id", "fieldtype": "Data", "label": "External Event ID", "unique": 1, "in_global_search": 1, "description": "Used for idempotency"},
+  {"fieldname": "external_object_id", "fieldtype": "Data", "label": "External Object ID", "in_global_search": 1},
+  {"fieldname": "donation", "fieldtype": "Link", "options": "Donation", "label": "Donation", "in_standard_filter": 1},
+  {"fieldname": "section_payload", "fieldtype": "Section Break", "label": "Processing"},
+  {"fieldname": "verified", "fieldtype": "Check", "label": "Signature Verified"},
+  {"fieldname": "processing_status", "fieldtype": "Select", "options": "Received\nProcessed\nIgnored\nError", "default": "Received", "label": "Status", "in_list_view": 1, "in_standard_filter": 1},
+  {"fieldname": "error_message", "fieldtype": "Small Text", "label": "Error"},
+  {"fieldname": "raw_payload", "fieldtype": "Long Text", "label": "Raw Payload"}
+ ],
+ "modified": "2026-05-02 00:00:00",
+ "modified_by": "Administrator",
+ "module": "Donation Management",
+ "name": "Donation Payment Log",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "System Manager", "read": 1, "write": 1, "delete": 1, "create": 1, "report": 1, "export": 1},
+  {"role": "Donations Manager", "read": 1, "report": 1, "export": 1}
+ ],
+ "sort_field": "received_at",
+ "sort_order": "DESC",
+ "track_changes": 0
+}
