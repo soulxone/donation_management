@@ -42,12 +42,18 @@ def handle():
         return {"error": "webhook secret not configured"}
 
     try:
-        event = stripe.Webhook.construct_event(payload, sig_header, secret)
+        stripe_event = stripe.Webhook.construct_event(payload, sig_header, secret)
     except (ValueError, stripe.error.SignatureVerificationError) as e:
         frappe.log_error(title="Stripe webhook: bad signature", message=str(e))
         log_event("Stripe", "signature.failed", external_event_id=None, raw_payload=payload[:5000], verified=False, processing_status="Error", error_message=str(e))
         frappe.local.response["http_status_code"] = 400
         return {"error": "bad signature"}
+
+    # Convert Stripe's StripeObject to a plain dict. Newer stripe-python (8+)
+    # StripeObject does not implement .get() as a method (it's intercepted by
+    # __getattr__ which raises AttributeError for "get"), so downstream .get()
+    # calls would crash with AttributeError: get.
+    event = json.loads(json.dumps(stripe_event, default=str))
 
     if already_processed("Stripe", event["id"]):
         return {"ok": True, "duplicate": True}
@@ -56,7 +62,7 @@ def handle():
         provider="Stripe",
         event_type=event["type"],
         external_event_id=event["id"],
-        external_object_id=(event.get("data", {}).get("object", {}) or {}).get("id"),
+        external_object_id=((event.get("data") or {}).get("object") or {}).get("id"),
         raw_payload=json.dumps(event, default=str)[:65000],
         verified=True,
         processing_status="Received",

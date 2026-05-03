@@ -136,47 +136,55 @@ def create_checkout(donation):
 
 def refresh_donation_from_session(session_id):
     """Pull a Checkout Session by ID and reconcile its state to our Donation.
-    Used by the webhook handler and by an admin 'Refresh' action."""
+    Used by the webhook handler and by an admin 'Refresh' action.
+
+    All Stripe objects are converted to plain dicts so .get() works (newer
+    stripe-python StripeObject doesn't expose .get() as a method)."""
     stripe = _client()
-    session = stripe.checkout.Session.retrieve(
+    session_obj = stripe.checkout.Session.retrieve(
         session_id, expand=["payment_intent", "subscription", "subscription.latest_invoice.charge"]
     )
-    donation_name = (session.metadata or {}).get("donation") or session.client_reference_id
+    session = json.loads(json.dumps(session_obj, default=str))
+    metadata = session.get("metadata") or {}
+    donation_name = metadata.get("donation") or session.get("client_reference_id")
     if not donation_name or not frappe.db.exists("Donation", donation_name):
         return None
     donation = frappe.get_doc("Donation", donation_name)
 
-    if session.payment_status == "paid":
+    if session.get("payment_status") == "paid":
         # One-time
-        pi = session.payment_intent
-        charge = (pi and pi.latest_charge) or None
-        if not isinstance(charge, str) and charge:
-            charge_id = charge.id
-        else:
-            charge_id = charge
+        pi = session.get("payment_intent") or {}
+        if isinstance(pi, str):
+            pi = {"id": pi}
+        charge_id = pi.get("latest_charge") if isinstance(pi.get("latest_charge"), str) else (pi.get("latest_charge") or {}).get("id")
         if charge_id:
-            ch = stripe.Charge.retrieve(charge_id, expand=["balance_transaction"])
-            bt = ch.balance_transaction
-            fee = flt(getattr(bt, "fee", 0)) / 100.0
-            net = flt(getattr(bt, "net", 0)) / 100.0
+            ch_obj = stripe.Charge.retrieve(charge_id, expand=["balance_transaction"])
+            ch = json.loads(json.dumps(ch_obj, default=str))
+            bt = ch.get("balance_transaction") or {}
+            if isinstance(bt, str):
+                bt = {}
+            fee = flt(bt.get("fee", 0)) / 100.0
+            net = flt(bt.get("net", 0)) / 100.0
             donation.fee_amount = fee
             donation.net_amount = net
-            donation.gross_amount = flt(ch.amount) / 100.0
-            donation.payment_method = (ch.payment_method_details and ch.payment_method_details.type) or None
-            donation.external_transaction_id = ch.id
+            donation.gross_amount = flt(ch.get("amount", 0)) / 100.0
+            pm_details = ch.get("payment_method_details") or {}
+            donation.payment_method = pm_details.get("type")
+            donation.external_transaction_id = ch.get("id")
         donation.status = "Succeeded"
         donation.received_date = frappe.utils.now_datetime()
         donation.save(ignore_permissions=True)
         if donation.docstatus == 0:
             donation.submit()
-    elif session.subscription:
+    elif session.get("subscription"):
         # Subscription mode — first charge handled by invoice webhook;
         # mark donation as Processing for now.
         donation.status = "Processing"
         donation.save(ignore_permissions=True)
         if donation.recurring_donation:
             rec = frappe.get_doc("Recurring Donation", donation.recurring_donation)
-            rec.external_subscription_id = session.subscription if isinstance(session.subscription, str) else session.subscription.id
+            sub = session.get("subscription")
+            rec.external_subscription_id = sub if isinstance(sub, str) else (sub or {}).get("id")
             rec.save(ignore_permissions=True)
 
     return donation.name
