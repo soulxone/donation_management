@@ -98,7 +98,7 @@ def _receipt_email_html(rcpt, donation, donor, settings):
 <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#333">
   <div style="background:linear-gradient(135deg,#3a9e8a,#4ABFAB,#6BB8D4);color:#fff;padding:2rem 1.5rem;text-align:center">
     <h1 style="margin:0;color:#fff;font-size:1.5rem">{settings.organization_name or 'Pleasant Springs Church'}</h1>
-    <div style="margin-top:.5rem;opacity:.92">Henderson, Tennessee</div>
+    <div style="margin-top:.5rem;opacity:.92">Pinson, Tennessee</div>
     {f'<div style="margin-top:.5rem;opacity:.92;font-size:.85rem">EIN: {settings.ein}</div>' if settings.ein else ''}
     <div style="margin-top:1rem;font-size:1.1rem;letter-spacing:.05em">OFFICIAL DONATION RECEIPT</div>
   </div>
