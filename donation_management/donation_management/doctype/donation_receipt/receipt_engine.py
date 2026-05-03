@@ -47,38 +47,76 @@ def issue_receipt_for(donation):
 
 
 def _send_receipt_email(rcpt, donation, donor, settings):
+    """Send receipt email with the formal tax receipt rendered inline as HTML.
+
+    PDF attachment is opt-in: if frappe.attach_print succeeds (e.g. when
+    a compatible PDF generator is configured on the site), we attach the PDF.
+    Otherwise we still send the email — the inline HTML body contains the
+    full IRS Pub 1771-compliant receipt content."""
     subject = settings.auto_email_subject or "Thank you for your gift"
     msg = _receipt_email_html(rcpt, donation, donor, settings)
-    frappe.sendmail(
-        recipients=[donor.email],
-        subject=subject,
-        message=msg,
-        reference_doctype="Donation Receipt",
-        reference_name=rcpt.name,
-        attachments=[
+
+    attachments = []
+    try:
+        attachments.append(
             frappe.attach_print(
                 doctype="Donation Receipt",
                 name=rcpt.name,
                 print_format="Donation Receipt",
                 file_name=f"{rcpt.name}.pdf",
             )
-        ],
+        )
+    except Exception:
+        # PDF generator not available or print format not yet loaded — fall through.
+        frappe.log_error(title=f"Receipt PDF skipped for {rcpt.name}")
+
+    frappe.sendmail(
+        recipients=[donor.email],
+        subject=subject,
+        message=msg,
+        reference_doctype="Donation Receipt",
+        reference_name=rcpt.name,
+        attachments=attachments or None,
     )
     rcpt.db_set("sent_at", now_datetime(), update_modified=False)
 
 
 def _receipt_email_html(rcpt, donation, donor, settings):
+    """Build a complete receipt as HTML email body — works as a stand-alone
+    receipt even if the PDF attachment is missing."""
+    addr_lines = []
+    if donor.address_line_1:
+        line = donor.address_line_1
+        if donor.address_line_2:
+            line += f", {donor.address_line_2}"
+        addr_lines.append(line)
+    if donor.city or donor.state or donor.postal_code:
+        addr_lines.append(f"{donor.city or ''}{', ' + donor.state if donor.state else ''} {donor.postal_code or ''}".strip())
+    address_html = "<br>".join(addr_lines) if addr_lines else ""
+
     return f"""
-<div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">
-  <div style="background:linear-gradient(135deg,#3a9e8a,#4ABFAB,#6BB8D4);color:#fff;padding:1.5rem;text-align:center">
-    <h2 style="margin:0">Thank you for your gift!</h2>
+<div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#333">
+  <div style="background:linear-gradient(135deg,#3a9e8a,#4ABFAB,#6BB8D4);color:#fff;padding:2rem 1.5rem;text-align:center">
+    <h1 style="margin:0;color:#fff;font-size:1.5rem">{settings.organization_name or 'Pleasant Springs Church'}</h1>
+    <div style="margin-top:.5rem;opacity:.92">Henderson, Tennessee</div>
+    {f'<div style="margin-top:.5rem;opacity:.92;font-size:.85rem">EIN: {settings.ein}</div>' if settings.ein else ''}
+    <div style="margin-top:1rem;font-size:1.1rem;letter-spacing:.05em">OFFICIAL DONATION RECEIPT</div>
   </div>
-  <div style="padding:1.5rem;color:#333;line-height:1.6">
+  <div style="padding:1.5rem;line-height:1.6">
     <p>Dear {donor.donor_name},</p>
-    <p>Thank you for your gift of <b>${donation.amount:,.2f}</b> on <b>{frappe.format(donation.donation_date,{'fieldtype':'Date'})}</b> to the <b>{donation.donation_fund}</b> at {settings.organization_name}.</p>
-    <p>A formal tax receipt is attached as a PDF for your records.</p>
-    <p style="font-size:.9rem;color:#666;border-top:1px solid #eee;padding-top:1rem">{settings.compliance_statement or ''}</p>
-    <p style="text-align:center;margin-top:2rem"><a href="https://ps-church.com/my-giving" style="background:#4ABFAB;color:#fff;padding:.6rem 1.2rem;border-radius:.4rem;text-decoration:none">View My Giving</a></p>
+    <p>Thank you for your generous gift of <b>${donation.amount:,.2f}</b> to the <b>{donation.donation_fund}</b>.</p>
+    <table style="width:100%;border-collapse:collapse;margin:1rem 0;background:#EBF6FA;border-radius:.4rem">
+      <tr><td style="padding:.5rem 1rem"><b>Receipt #:</b></td><td style="padding:.5rem 1rem">{rcpt.name}</td></tr>
+      <tr><td style="padding:.5rem 1rem"><b>Date of Gift:</b></td><td style="padding:.5rem 1rem">{frappe.format(donation.donation_date,{'fieldtype':'Date'})}</td></tr>
+      <tr><td style="padding:.5rem 1rem"><b>Amount:</b></td><td style="padding:.5rem 1rem"><b>${donation.amount:,.2f}</b></td></tr>
+      <tr><td style="padding:.5rem 1rem"><b>Fund:</b></td><td style="padding:.5rem 1rem">{donation.donation_fund}</td></tr>
+      <tr><td style="padding:.5rem 1rem"><b>Method:</b></td><td style="padding:.5rem 1rem">{donation.payment_channel}{f' ({donation.payment_method})' if donation.payment_method else ''}</td></tr>
+    </table>
+    {f'<div style="margin:1rem 0;padding:.75rem;border-left:3px solid #4ABFAB;background:#f8fafa"><b>{donor.donor_name}</b><br>{address_html}</div>' if address_html else ''}
+    <p style="font-size:.85rem;color:#666;border-top:1px solid #eee;margin-top:1.5rem;padding-top:1rem;font-style:italic">{settings.compliance_statement or 'No goods or services were provided in exchange for this contribution.'}</p>
+    <p style="text-align:center;margin-top:2rem">
+      <a href="https://ps-church.com/my-giving" style="background:#4ABFAB;color:#fff;padding:.6rem 1.2rem;border-radius:.4rem;text-decoration:none">View My Giving History</a>
+    </p>
   </div>
 </div>
 """
