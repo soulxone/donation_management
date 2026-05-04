@@ -108,61 +108,88 @@ def _route(event):
 
 
 def _on_checkout_completed(session):
-    """Webhook payload already contains the session — no re-fetch needed.
-    The session dict has all fields, but does NOT include expanded
-    payment_intent / balance_transaction. We pull fee/net via the raw
-    Stripe REST API (no StripeObject), since it's straightforward JSON."""
-    from frappe.utils import flt
+    """Handle a completed Checkout Session.
+
+    Two flows are supported:
+      A) Internal /donate flow — Donation doc was pre-created and its name
+         passed via metadata.donation or client_reference_id. We update it.
+      B) Stripe Payment Link flow (e.g. /give → buy.stripe.com/...) — no
+         Donation exists yet. We create one from session.customer_details
+         using the default Fund/Company/Currency from Donation Settings.
+
+    The session dict contains all needed fields, but does NOT include expanded
+    payment_intent / balance_transaction. We pull fee/net via the raw Stripe
+    REST API (no StripeObject), since it's straightforward JSON.
+    """
     metadata = session.get("metadata") or {}
     donation_name = metadata.get("donation") or session.get("client_reference_id")
-    if not donation_name or not frappe.db.exists("Donation", donation_name):
-        return
+
+    if donation_name and frappe.db.exists("Donation", donation_name):
+        _book_existing_donation(donation_name, session)
+    elif session.get("payment_status") == "paid":
+        _book_new_donation_from_session(session)
+
+
+def _fetch_stripe_charge_details(payment_intent_id):
+    """Pull fee/net/payment_method/charge_id for a payment intent.
+    Returns dict with keys: gross, fee, net, pm_type, external_txn (charge id).
+    Falls back to safe defaults if the call fails."""
+    from donation_management.donation_management.doctype.donation_settings.donation_settings import get_secret
+    import requests
+    out = {"gross": None, "fee": 0.0, "net": None, "pm_type": None, "external_txn": payment_intent_id}
+    if not payment_intent_id:
+        return out
+    try:
+        sk = get_secret("stripe_secret_key")
+        if not sk:
+            return out
+        r = requests.get(
+            f"https://api.stripe.com/v1/payment_intents/{payment_intent_id}",
+            auth=(sk, ""),
+            params={"expand[]": "latest_charge.balance_transaction"},
+            timeout=15,
+        )
+        if not r.ok:
+            return out
+        pi = r.json()
+        ch = pi.get("latest_charge") or {}
+        if not isinstance(ch, dict):
+            return out
+        bt = ch.get("balance_transaction") or {}
+        if isinstance(bt, dict):
+            out["fee"] = flt(bt.get("fee", 0)) / 100.0
+            out["net"] = flt(bt.get("net", 0)) / 100.0
+        if ch.get("amount") is not None:
+            out["gross"] = flt(ch.get("amount")) / 100.0
+        pm_details = ch.get("payment_method_details") or {}
+        out["pm_type"] = pm_details.get("type")
+        if ch.get("id"):
+            out["external_txn"] = ch.get("id")
+    except Exception:
+        frappe.log_error(title=f"Stripe charge fetch failed for PI {payment_intent_id}")
+    return out
+
+
+def _book_existing_donation(donation_name, session):
+    """Mark a pre-created Donation as Succeeded with fee details (Flow A)."""
     donation = frappe.get_doc("Donation", donation_name)
     if donation.docstatus == 1 and donation.status == "Succeeded":
         return  # already booked
 
     payment_status = session.get("payment_status")
     if payment_status == "paid":
-        # Pull charge/fee details via raw HTTP to avoid StripeObject pitfalls.
         gross = flt(session.get("amount_total", 0)) / 100.0
-        fee = 0.0
-        net = gross
-        pm_type = None
-        external_txn = session.get("payment_intent")  # default to PI id
+        external_txn = session.get("payment_intent")
         if isinstance(external_txn, dict):
             external_txn = external_txn.get("id")
-        try:
-            from donation_management.donation_management.doctype.donation_settings.donation_settings import get_secret
-            import requests
-            sk = get_secret("stripe_secret_key")
-            if sk and external_txn:
-                r = requests.get(
-                    f"https://api.stripe.com/v1/payment_intents/{external_txn}",
-                    auth=(sk, ""),
-                    params={"expand[]": "latest_charge.balance_transaction"},
-                    timeout=15,
-                )
-                if r.ok:
-                    pi = r.json()
-                    ch = pi.get("latest_charge") or {}
-                    if isinstance(ch, dict):
-                        bt = ch.get("balance_transaction") or {}
-                        if isinstance(bt, dict):
-                            fee = flt(bt.get("fee", 0)) / 100.0
-                            net = flt(bt.get("net", 0)) / 100.0
-                        gross = flt(ch.get("amount", gross * 100)) / 100.0
-                        pm_details = ch.get("payment_method_details") or {}
-                        pm_type = pm_details.get("type")
-                        external_txn = ch.get("id") or external_txn
-        except Exception:
-            frappe.log_error(title=f"Stripe charge fetch failed for {donation_name}")
+        details = _fetch_stripe_charge_details(external_txn)
 
-        donation.gross_amount = gross
-        donation.fee_amount = fee
-        donation.net_amount = net
-        if pm_type:
-            donation.payment_method = pm_type
-        donation.external_transaction_id = external_txn
+        donation.gross_amount = details["gross"] if details["gross"] is not None else gross
+        donation.fee_amount = details["fee"]
+        donation.net_amount = details["net"] if details["net"] is not None else gross
+        if details["pm_type"]:
+            donation.payment_method = details["pm_type"]
+        donation.external_transaction_id = details["external_txn"]
         donation.status = "Succeeded"
         donation.received_date = now_datetime()
         donation.save(ignore_permissions=True)
@@ -178,6 +205,89 @@ def _on_checkout_completed(session):
                 rec = frappe.get_doc("Recurring Donation", donation.recurring_donation)
                 rec.external_subscription_id = sub_id
                 rec.save(ignore_permissions=True)
+
+
+def _book_new_donation_from_session(session):
+    """Create + submit a new Donation from a Stripe Checkout Session that has
+    no pre-existing Donation reference (Flow B — Stripe Payment Links / /give).
+
+    Donor is found-or-created by email from session.customer_details.
+    Defaults pulled from Donation Settings (default_fund / default_company /
+    default_currency)."""
+    # Idempotency — skip if we've already booked this session
+    session_id = session.get("id")
+    if session_id and frappe.db.exists("Donation", {"external_session_id": session_id}):
+        return
+
+    customer = session.get("customer_details") or {}
+    email = (customer.get("email") or "").strip().lower()
+    name = (customer.get("name") or "").strip()
+    if not name and email:
+        name = email.split("@")[0]
+    if not name:
+        name = "Anonymous Donor"
+
+    # Find-or-create Donor by email (or create unlinked if no email)
+    donor_name = None
+    if email:
+        donor_name = frappe.db.get_value("Donor", {"email": email}, "name")
+    if not donor_name:
+        donor = frappe.new_doc("Donor")
+        donor.donor_name = name
+        donor.donor_type = "Individual"
+        if email:
+            donor.email = email
+        if customer.get("phone"):
+            donor.phone = customer.get("phone")
+        addr = (customer.get("address") or {})
+        if addr.get("line1"): donor.address_line_1 = addr.get("line1")
+        if addr.get("line2"): donor.address_line_2 = addr.get("line2")
+        if addr.get("city"):  donor.city = addr.get("city")
+        if addr.get("state"): donor.state = addr.get("state")
+        if addr.get("postal_code"): donor.postal_code = addr.get("postal_code")
+        if session.get("customer"):
+            donor.stripe_customer_id = session.get("customer")
+        donor.insert(ignore_permissions=True)
+        donor_name = donor.name
+
+    # Pull fee/net from Stripe before creating the Donation
+    external_txn = session.get("payment_intent")
+    if isinstance(external_txn, dict):
+        external_txn = external_txn.get("id")
+    details = _fetch_stripe_charge_details(external_txn)
+    gross_session = flt(session.get("amount_total", 0)) / 100.0
+    gross = details["gross"] if details["gross"] is not None else gross_session
+    net = details["net"] if details["net"] is not None else gross
+
+    # Defaults from Donation Settings
+    settings = frappe.get_single("Donation Settings")
+    default_fund = settings.get("default_fund") or "General Fund"
+    default_company = settings.get("default_company") or frappe.db.get_single_value("Global Defaults", "default_company")
+    default_currency = (session.get("currency") or settings.get("default_currency") or "USD").upper()
+
+    donation = frappe.new_doc("Donation")
+    donation.donor = donor_name
+    donation.donation_date = frappe.utils.today()
+    donation.amount = gross
+    donation.currency = default_currency
+    donation.donation_fund = default_fund
+    donation.payment_channel = "Stripe"
+    donation.company = default_company
+    donation.gross_amount = gross
+    donation.fee_amount = details["fee"]
+    donation.net_amount = net
+    if details["pm_type"]:
+        donation.payment_method = details["pm_type"]
+    donation.external_transaction_id = details["external_txn"]
+    # Best-effort: stash session id if the field exists on the doctype
+    if hasattr(donation, "external_session_id"):
+        donation.external_session_id = session_id
+    donation.status = "Succeeded"
+    donation.received_date = now_datetime()
+    donation.source = "Online"
+    donation.is_recurring_first = 0
+    donation.insert(ignore_permissions=True)
+    donation.submit()
 
 
 def _on_payment_intent_succeeded(pi):
